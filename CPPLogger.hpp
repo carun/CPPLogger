@@ -1,5 +1,5 @@
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+#ifndef CPPLOGGER_HPP
+#define CPPLOGGER_HPP
 
 #include <iostream>
 #include <sstream>
@@ -20,9 +20,9 @@
 #include <time.h>
 #include <unistd.h>
 
-namespace Log {
+namespace CPPLog {
 
-const char * const version = "1.0.0";
+const char * const version = "1.0.1";
 const size_t MSG_SIZE = 3000;
 const size_t MAX_BUFF_SIZE = (512 * 1024);
 
@@ -349,7 +349,7 @@ inline std::string GetVersion()
 }
 
 #define LogTrace(msg)   do { \
-   using namespace ::Log; \
+   using namespace CPPLog; \
    Logger *pLog = Logger::Instance(); \
    if (pLog) { \
       if (pLog->LogLevel() == None || pLog->LogLevel() < Trace) \
@@ -359,7 +359,7 @@ inline std::string GetVersion()
 } while (0)
 
 #define LogStamp(msg)   do { \
-   using namespace ::Log; \
+   using namespace CPPLog; \
    Logger *pLog = Logger::Instance(); \
    if (pLog) { \
       if (pLog->LogLevel() == None || pLog->LogLevel() < Stamp) \
@@ -369,7 +369,7 @@ inline std::string GetVersion()
 } while (0)
 
 #define LogInfo(msg)    do { \
-   using namespace ::Log; \
+   using namespace CPPLog; \
    Logger *pLog = Logger::Instance(); \
    if (pLog) { \
       if (pLog->LogLevel() == None || pLog->LogLevel() < Info) \
@@ -379,7 +379,7 @@ inline std::string GetVersion()
 } while (0)
 
 #define LogWarn(msg)    do { \
-   using namespace ::Log; \
+   using namespace CPPLog; \
    Logger *pLog = Logger::Instance(); \
    if (pLog) { \
       if (pLog->LogLevel() == None || pLog->LogLevel() < Warn) \
@@ -389,7 +389,7 @@ inline std::string GetVersion()
 } while (0)
 
 #define LogError(msg)   do { \
-   using namespace ::Log; \
+   using namespace CPPLog; \
    Logger *pLog = Logger::Instance(); \
    if (pLog) { \
       if (pLog->LogLevel() == None || pLog->LogLevel() < Error) \
@@ -399,7 +399,7 @@ inline std::string GetVersion()
 } while (0)
 
 #define LogFatal(msg)   do { \
-   using namespace ::Log; \
+   using namespace CPPLog; \
    Logger *pLog = Logger::Instance(); \
    if (pLog) { \
       if (pLog->LogLevel() == None || pLog->LogLevel() < Fatal) \
