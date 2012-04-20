@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
    CPPLog::Logger::Init(logPath, logFileName, 1024*1024, 1024, 10,
                         CPPLog::Trace);
    int ret = RUN_ALL_TESTS();
+   LogTrace((logPath));
    CPPLog::Logger::Destroy();
    return ret;
 }

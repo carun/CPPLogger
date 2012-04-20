@@ -41,7 +41,7 @@
 namespace CPPLog {
 
 const char * const version = "1.0.1";
-const size_t MSG_SIZE = 3000;
+const size_t MSG_SIZE = 1024*1024;
 const size_t MAX_BUFF_SIZE = (512 * 1024);
 
 enum MessageType
@@ -335,6 +335,11 @@ inline void Logger::Log(std::string& strFileName, std::string& strFuncName, int 
    std::string buff(strm.str());
 
    AddToLogBuff(buff, msgLevel);
+}
+
+inline std::string ConstructMsg(std::string& msg)
+{
+   return msg;
 }
 
 inline std::string ConstructMsg(const char *format, ...)
