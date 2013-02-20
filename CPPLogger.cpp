@@ -17,7 +17,6 @@
  * along with CPPLogger.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <iostream>
-#include <gtest/gtest.h>
 #include "CPPLogger.hpp"
 
 #define UNUSED __attribute__((unused))
@@ -37,7 +36,7 @@ void *func(void UNUSED *arg)
    pthread_exit(0);
 }
 
-TEST(Logger, Multithread)
+void threaded_test(void)
 {
    pthread_t tid1, tid2;
    pthread_create(&tid1, NULL, func, NULL);
@@ -46,51 +45,69 @@ TEST(Logger, Multithread)
    pthread_join(tid2, NULL);
 }
 
-TEST(Logger, Trace)
+void test_trace(int loop_cnt)
 {
-   for (int i = 0; i < 1000; i++)
+   for (int i = 0; i < loop_cnt; i++)
       LogTrace(("Hasdads12938109381038910398102398123091823098"));
 }
 
-TEST(Logger, Stamp)
+void test_stamp(int loop_cnt)
 {
-   for (int i = 0; i < 1000; i++)
+   for (int i = 0; i < loop_cnt; i++)
       LogStamp(("Hasdads12938109381038910398102398123091823098"));
 }
 
-TEST(Logger, Info)
+void test_info(int loop_cnt)
 {
-   for (int i = 0; i < 1000; i++)
+   for (int i = 0; i < loop_cnt; i++)
       LogInfo(("Hasdads12938109381038910398102398123091823098"));
 }
 
-TEST(Logger, Warn)
+void test_warn(int loop_cnt)
 {
-   for (int i = 0; i < 1000; i++)
+   for (int i = 0; i < loop_cnt; i++)
       LogWarn(("Hasdads12938109381038910398102398123091823098"));
 }
 
-TEST(Logger, Error)
+void test_error(int loop_cnt)
 {
-   for (int i = 0; i < 1000; i++)
+   for (int i = 0; i < loop_cnt; i++)
       LogError(("Hasdads12938109381038910398102398123091823098"));
 }
 
-TEST(Logger, Fatal)
+void test_fatal(int loop_cnt)
 {
-   for (int i = 0; i < 1000; i++)
+   for (int i = 0; i < loop_cnt; i++)
       LogFatal(("Hasdads12938109381038910398102398123091823098"));
 }
 
-int main(int argc, char *argv[])
+int main()
 {
-   std::string logPath = "Log";
+   std::string logPath = "log";
    std::string logFileName = "Test.log";
-   testing::InitGoogleTest(&argc, argv);
-   CPPLog::Logger::Init(logPath, logFileName, 1024*1024, 1024, 10,
-                        CPPLog::Trace);
-   int ret = RUN_ALL_TESTS();
-   LogTrace((logPath));
+
+   CPPLog::Logger::Init(logPath, // Path where to log
+                        logFileName, // Log file name
+                        1024*1024, // Max size of each log file
+                        1024, // Max buffer size
+                        10, // Max number of files after which rotation starts
+                        CPPLog::Trace); // Log level
+
+   LogTrace(("Trace Test"));
+   test_trace(1000);
+   LogStamp(("Stamp Test"));
+   test_stamp(1000);
+   LogInfo(("Info Test"));
+   test_info(1000);
+   LogWarn(("Warn Test"));
+   test_warn(1000);
+   LogError(("Error Test"));
+   test_error(1000);
+   LogFatal(("Fatal Test"));
+   test_fatal(1000);
+   LogTrace(("Multithreaded Test"));
+   threaded_test();
+
    CPPLog::Logger::Destroy();
-   return ret;
+   return EXIT_SUCCESS;
 }

@@ -1,0 +1,1 @@
+1. Add a signal handler to flush out the buffer if the process has received a SIGSEGV/SIGFPE

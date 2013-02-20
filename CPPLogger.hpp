@@ -40,7 +40,7 @@
 
 namespace CPPLog {
 
-const char * const version = "1.0.1";
+const char * const version = "1.0.2";
 const size_t MSG_SIZE = 1024*1024;
 const size_t MAX_BUFF_SIZE = (512 * 1024);
 
@@ -100,7 +100,6 @@ private:
    std::string m_LogFileName;
    size_t m_maxFileSize;
    size_t m_maxBuffSize;
-   size_t m_currBuffSize;
    uint32_t m_fileCap;
 
    Logger(std::string &filePath, std::string &fileName,
@@ -111,7 +110,6 @@ private:
       m_LogFileName(fileName),
       m_maxFileSize(fileSize),
       m_maxBuffSize((buffSize > MAX_BUFF_SIZE ? MAX_BUFF_SIZE : buffSize)),
-      m_currBuffSize(0),
       m_fileCap(fileCap)
    {
       m_maxBuffSize = (m_maxBuffSize > m_maxFileSize) ? 0 : m_maxBuffSize;
@@ -129,7 +127,7 @@ private:
 
    void GetDateTime(std::string& date, std::string& time);
    void GetLogLevelString(MessageType msgType, std::string &MsgLevelStr);
-   void AddToLogBuff(std::string& buff, MessageType msgLevel);
+   void AddToLogBuff(const std::string& buff, MessageType msgLevel);
    bool WriteLog();
    void ShiftLog();
 
@@ -228,15 +226,14 @@ inline void Logger::GetLogLevelString(MessageType msgType,
    }
 }
 
-inline void Logger::AddToLogBuff(std::string& buff, MessageType msgLevel)
+inline void Logger::AddToLogBuff(const std::string& buff, MessageType msgLevel)
 {
-   if ((m_currBuffSize + buff.length()) > m_maxBuffSize)
+   m_buffList.append(buff);
+
+   if (m_buffList.size() > m_maxBuffSize)
       WriteLog();
    else if (msgLevel == Fatal || msgLevel == Error || msgLevel == Warn)
       WriteLog();
-
-   m_buffList.append(buff);
-   m_currBuffSize += buff.length();
 }
 
 inline void Logger::ShiftLog()
@@ -298,7 +295,6 @@ inline bool Logger::WriteLog()
 
    logStream << m_buffList;
    m_buffList.clear();
-   m_currBuffSize = 0;
 
    logStream.flush();
    uint64_t currentSize = logStream.tellp();
@@ -334,6 +330,9 @@ inline void Logger::Log(std::string& strFileName, std::string& strFuncName, int 
 
    std::string buff(strm.str());
 
+#ifdef LOG_ON_SCREEN
+   std::cout << buff;
+#endif
    AddToLogBuff(buff, msgLevel);
 }
 
