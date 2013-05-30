@@ -26,7 +26,6 @@
 #include <vector>
 #include <fstream>
 
-#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -34,9 +33,18 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <time.h>
+
+#ifndef WIN32
+#include <pthread.h>
+#include <sys/time.h>
 #include <unistd.h>
+#else
+#include <sys/timeb.h>
+#include <Windows.h>
+#include <direct.h>
+#define __func__ __FUNCTION__
+#endif
 
 namespace CPPLog {
 
@@ -58,20 +66,49 @@ enum MessageType
 class Mutex
 {
 private:
-   pthread_mutex_t m_Mutex;
+
+#ifndef WIN32
+   pthread_mutex_t m_mtx;
+#else
+   HANDLE m_mtx;
+#endif
 
 public:
    Mutex()
-   { pthread_mutex_init(&m_Mutex, NULL); }
+   { 
+#ifndef WIN32
+      pthread_mutex_init(&m_mtx, NULL); 
+#else
+      m_mtx = CreateMutex(NULL, FALSE, NULL);            
+#endif
+   }
 
    ~Mutex()
-   { pthread_mutex_destroy(&m_Mutex); }
+   { 
+#ifndef WIN32
+      pthread_mutex_destroy(&m_mtx); 
+#else
+      CloseHandle(m_mtx);
+#endif
+   }
 
    void Lock()
-   { pthread_mutex_lock(&m_Mutex); }
+   { 
+#ifndef WIN32
+      pthread_mutex_lock(&m_mtx); 
+#else
+      WaitForSingleObject(m_mtx, INFINITE);
+#endif
+   }
 
    void Unlock()
-   { pthread_mutex_unlock(&m_Mutex); }
+   { 
+#ifndef WIN32
+      pthread_mutex_unlock(&m_mtx); 
+#else
+      ReleaseMutex(m_mtx);
+#endif
+   }
 };
 
 class MutexLocker
@@ -96,18 +133,18 @@ private:
    Mutex m_oMutex; /**< mutex contol instance */
    MessageType m_logLevel;
    std::string m_buffList;
-   std::string m_LogFilePath;
-   std::string m_LogFileName;
+   std::string m_logFilePath;
+   std::string m_logFileName;
    size_t m_maxFileSize;
    size_t m_maxBuffSize;
    uint32_t m_fileCap;
 
-   Logger(std::string &filePath, std::string &fileName,
+   Logger(std::string& filePath, std::string& fileName,
           const size_t fileSize, const size_t buffSize,
           const uint32_t fileCap, MessageType logLevel) :
       m_logLevel(logLevel),
-      m_LogFilePath(filePath),
-      m_LogFileName(fileName),
+      m_logFilePath(filePath),
+      m_logFileName(fileName),
       m_maxFileSize(fileSize),
       m_maxBuffSize((buffSize > MAX_BUFF_SIZE ? MAX_BUFF_SIZE : buffSize)),
       m_fileCap(fileCap)
@@ -146,12 +183,16 @@ private:
 
 public:
 
-   static void Init(std::string &filePath, std::string &fileName,
+   static void Init(std::string& filePath, std::string& fileName,
                     const size_t fileSize, const size_t buffSize,
                     const uint32_t fileCap, MessageType logLevel)
    {
 
+#ifndef WIN32
       mkdir(filePath.c_str(), 0755);
+#else
+      _mkdir(filePath.c_str());
+#endif
       Logger* pInst = new Logger(filePath, fileName, fileSize,
                                  buffSize, fileCap, logLevel);
       MyInstance(pInst);
@@ -177,8 +218,9 @@ public:
             int nLineNum, MessageType msgLevel, std::string& strMessage);
 };
 
-inline void Logger::GetDateTime(std::string& Date, std::string& Time)
+inline void Logger::GetDateTime(std::string& date, std::string& time_str)
 {
+#ifndef WIN32
    struct timeval detail_time;
 
    time_t long_time = 0;
@@ -194,33 +236,47 @@ inline void Logger::GetDateTime(std::string& Date, std::string& Time)
       << std::setw(2) << std::setfill('0') << tm1.tm_sec << "."
       << std::setw(6) << detail_time.tv_usec;
 
-   Time = strm.str();
+   time_str = strm.str();
 
-   strm.str(std::string());
+   strm.clear();
    strm << (tm1.tm_year + 1900) << "-"
       << std::setw(2) << std::setfill('0') << (tm1.tm_mon + 1) << "-"
       << std::setw(2) << std::setfill('0') << tm1.tm_mday;
-      
-   Date = strm.str();
+
+   date = strm.str();
+#else
+   SYSTEMTIME systemTime;
+   GetLocalTime(&systemTime);
+   std::stringstream strm;
+   strm << std::setw(2) << std::setfill('0') << systemTime.wHour << ":"
+      << std::setw(2) << std::setfill('0') << systemTime.wMinute << ":"
+      << std::setw(2) << std::setfill('0') << systemTime.wSecond << "."
+      << std::setw(6) << systemTime.wMilliseconds;
+   time_str = strm.str();
+
+   strm.clear();
+   strm << (systemTime.wYear) << "-" << std::setw(2) << std::setfill('0') << (systemTime.wMonth) << "-" << std::setw(2) << std::setfill('0') << systemTime.wDay;
+   date = strm.str();
+#endif
 }
 
 inline void Logger::GetLogLevelString(MessageType msgType,
-                                      std::string &MsgLevelStr)
+                                      std::string& msgLevelStr)
 {
    switch (msgType)
    {
    case Fatal:
-      { MsgLevelStr = "[FATAL]"; break; }
+      { msgLevelStr = "[FATAL]"; break; }
    case Error:
-      { MsgLevelStr = "[ERROR]"; break; }
+      { msgLevelStr = "[ERROR]"; break; }
    case Warn:
-      { MsgLevelStr = "[ WARN]"; break; }
+      { msgLevelStr = "[ WARN]"; break; }
    case Info:
-      { MsgLevelStr = "[ INFO]"; break; }
+      { msgLevelStr = "[ INFO]"; break; }
    case Stamp:
-      { MsgLevelStr = "[STAMP]"; break; }
+      { msgLevelStr = "[STAMP]"; break; }
    case Trace:
-      { MsgLevelStr = "[TRACE]"; break; }
+      { msgLevelStr = "[TRACE]"; break; }
    default:
       { break; }
    }
@@ -243,10 +299,10 @@ inline void Logger::ShiftLog()
    char strDstFName[512] = {0};
    char LastFile[512] = {0};
 
-   strcpy(fname, m_LogFileName.c_str());
+   strcpy(fname, m_logFileName.c_str());
    char *baseName = strtok(fname, ".");
    char *ext = strtok(NULL, ".");
-   sprintf(LastFile, "%s/%s.%d.%s", m_LogFilePath.c_str(), baseName, m_fileCap, ext);
+   sprintf(LastFile, "%s/%s.%d.%s", m_logFilePath.c_str(), baseName, m_fileCap, ext);
 
    struct stat statbuf;
    uint32_t startIdx = 1;
@@ -254,8 +310,8 @@ inline void Logger::ShiftLog()
    {
       for (uint32_t i = 2; i <= m_fileCap; i++)
       {
-         sprintf(strSrcFName, "%s/%s.%d.%s", m_LogFilePath.c_str(), baseName, i, ext);
-         sprintf(strDstFName, "%s/%s.%d.%s", m_LogFilePath.c_str(), baseName, i - 1, ext);
+         sprintf(strSrcFName, "%s/%s.%d.%s", m_logFilePath.c_str(), baseName, i, ext);
+         sprintf(strDstFName, "%s/%s.%d.%s", m_logFilePath.c_str(), baseName, i - 1, ext);
          rename(strSrcFName, strDstFName);
       }
       startIdx = m_fileCap;
@@ -264,14 +320,14 @@ inline void Logger::ShiftLog()
    for (uint32_t fileNo = startIdx; fileNo <= m_fileCap; fileNo++)
    {
       char renLogFile[512] = {0};
-      sprintf(renLogFile, "%s/%s.%d.%s", m_LogFilePath.c_str(), baseName, fileNo, ext);
+      sprintf(renLogFile, "%s/%s.%d.%s", m_logFilePath.c_str(), baseName, fileNo, ext);
 
       struct stat statbuf;
       if (stat(renLogFile, &statbuf) != 0)
       {
-         std::string oldName(m_LogFilePath);
+         std::string oldName(m_logFilePath);
          oldName += "/";
-         oldName += m_LogFileName;
+         oldName += m_logFileName;
 
          rename(oldName.c_str(), renLogFile);
          break;
@@ -282,14 +338,14 @@ inline void Logger::ShiftLog()
 inline bool Logger::WriteLog()
 {
    std::string logFile;
-   logFile += m_LogFilePath;
+   logFile += m_logFilePath;
    logFile += "/";
-   logFile += m_LogFileName;
+   logFile += m_logFileName;
    std::ofstream logStream(logFile.c_str(), std::ios::out | std::ios::app);
 
    if (!logStream.is_open())
    {
-      std::cerr << "Unable to open log file: " << m_LogFileName.c_str();
+      std::cerr << "Unable to open log file: " << m_logFileName.c_str();
       return false;
    }
 
@@ -305,7 +361,7 @@ inline bool Logger::WriteLog()
    return true;
 }
 
-inline void Logger::Log(std::string& strFileName, std::string& strFuncName, int nLineNum,
+inline void Logger::Log(std::string& strFileName, std::string& strFuncName, int lineNum,
                         MessageType msgLevel, std::string& strMessage)
 {
    if (msgLevel > m_logLevel)
@@ -321,11 +377,17 @@ inline void Logger::Log(std::string& strFileName, std::string& strFuncName, int 
 
    std::stringstream strm;
    strm << DateStr.c_str() << " " << TimeStr.c_str() << " "
-      << "[0x" << std::hex << pthread_self() << "] " << std::dec
+      << "[0x" << std::hex
+#ifndef WIN32
+      << pthread_self()
+#else
+      << GetCurrentThreadId()
+#endif
+      << "] " << std::dec
       << MsgLevelStr << " "
       << strFileName.c_str() << ":"
       << strFuncName.c_str() << ":"
-      << nLineNum << " "
+      << lineNum << " "
       << strMessage.c_str() << std::endl;
 
    std::string buff(strm.str());
@@ -354,14 +416,14 @@ inline std::string ConstructMsg(const char *format, ...)
 }
 
 inline void Print(const char *fileName, const char *funcName,
-                  int nLineNum, MessageType msgLevel, std::string strMessage)
+                  int lineNum, MessageType msgLevel, std::string strMessage)
 {
    Logger *pLogger = Logger::Instance();
    if (pLogger)
    {
       std::string strFileName = fileName;
       std::string strFuncName = funcName;
-      pLogger->Log(strFileName, strFuncName, nLineNum, msgLevel, strMessage);
+      pLogger->Log(strFileName, strFuncName, lineNum, msgLevel, strMessage);
    }
 }
 
